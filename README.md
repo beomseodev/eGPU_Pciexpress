@@ -26,15 +26,17 @@ dist\eGPU-TrayToggle\EGPU.TrayToggle.exe
 
 ## 자동 실행
 
-컴퓨터 로그인 시 트레이 앱을 자동으로 띄우려면 아래 파일을 실행합니다.
+컴퓨터 로그인 시 트레이 앱을 자동으로 띄우려면 트레이 아이콘을 우클릭한 뒤 `Start with Windows`를 켭니다.
+
+자동 실행은 `--no-toggle` 모드로 등록됩니다. 즉, 부팅하거나 로그인할 때는 ON/OFF를 뒤집지 않고 트레이 아이콘만 띄워 현재 상태를 표시합니다.
+
+자동 실행을 해제하려면 트레이 아이콘을 우클릭한 뒤 `Start with Windows`를 다시 끕니다.
+
+수동으로 등록하거나 해제해야 하는 경우에는 아래 파일을 사용할 수 있습니다.
 
 ```text
 Install-StartupTask.cmd
 ```
-
-자동 실행은 `--no-toggle` 모드로 등록됩니다. 즉, 부팅하거나 로그인할 때는 ON/OFF를 뒤집지 않고 트레이 아이콘만 띄워 현재 상태를 표시합니다.
-
-자동 실행을 해제하려면 아래 파일을 실행합니다.
 
 ```text
 Uninstall-StartupTask.cmd
@@ -51,6 +53,7 @@ Uninstall-StartupTask.cmd
 
 - `Turn ON` 또는 `Turn OFF`: 현재 상태를 반대로 전환
 - `Refresh`: 현재 `bcdedit` 상태 다시 확인
+- `Start with Windows`: Windows 로그인 시 자동 실행 켜기/끄기
 - `Exit`: 트레이 앱 종료
 
 이미 앱이 실행 중인 상태에서 exe를 다시 실행하면 새 앱을 띄우지 않고, 기존 트레이 앱에 토글 명령만 전달합니다.

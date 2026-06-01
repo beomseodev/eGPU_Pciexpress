@@ -10,6 +10,7 @@ internal sealed class TrayToggleContext : ApplicationContext
     private readonly NotifyIcon notifyIcon;
     private readonly ToolStripMenuItem toggleMenuItem;
     private readonly ToolStripMenuItem refreshMenuItem;
+    private readonly ToolStripMenuItem startupMenuItem;
     private readonly ToolStripMenuItem exitMenuItem;
     private readonly CancellationTokenSource pipeCancellation = new();
     private readonly string pipeName;
@@ -37,11 +38,16 @@ internal sealed class TrayToggleContext : ApplicationContext
 
         toggleMenuItem = new ToolStripMenuItem("Toggle", null, async (_, _) => await ToggleAsync(showBalloon: true));
         refreshMenuItem = new ToolStripMenuItem("Refresh", null, async (_, _) => await RefreshAsync(showBalloon: true));
+        startupMenuItem = new ToolStripMenuItem("Start with Windows", null, async (_, _) => await ToggleStartupAsync())
+        {
+            CheckOnClick = false
+        };
         exitMenuItem = new ToolStripMenuItem("Exit", null, (_, _) => ExitApplication());
 
         var menu = new ContextMenuStrip();
         menu.Items.Add(toggleMenuItem);
         menu.Items.Add(refreshMenuItem);
+        menu.Items.Add(startupMenuItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(exitMenuItem);
 
@@ -55,6 +61,7 @@ internal sealed class TrayToggleContext : ApplicationContext
         notifyIcon.DoubleClick += async (_, _) => await ToggleAsync(showBalloon: true);
 
         _ = RunPipeServerAsync(pipeCancellation.Token);
+        _ = RefreshStartupMenuAsync();
         _ = toggleOnStart
             ? ToggleAsync(showBalloon: true)
             : RefreshAsync(showBalloon: false);
@@ -226,6 +233,7 @@ internal sealed class TrayToggleContext : ApplicationContext
         isBusy = busy;
         toggleMenuItem.Enabled = !busy;
         refreshMenuItem.Enabled = !busy;
+        startupMenuItem.Enabled = !busy;
         notifyIcon.Text = busy
             ? "eGPU setting in progress"
             : currentState switch
@@ -234,6 +242,57 @@ internal sealed class TrayToggleContext : ApplicationContext
                 PciexpressState.Off => "eGPU stabilization OFF",
                 _ => "eGPU status error"
             };
+    }
+
+    private async Task ToggleStartupAsync()
+    {
+        SetStartupMenuBusy(true);
+        try
+        {
+            var installed = await StartupTaskService.IsInstalledAsync();
+            if (installed)
+            {
+                await StartupTaskService.UninstallAsync();
+                startupMenuItem.Checked = false;
+                notifyIcon.ShowBalloonTip(2000, "eGPU PCI Express", "Windows startup disabled.", ToolTipIcon.Info);
+            }
+            else
+            {
+                await StartupTaskService.InstallAsync();
+                startupMenuItem.Checked = true;
+                notifyIcon.ShowBalloonTip(2000, "eGPU PCI Express", "Windows startup enabled.", ToolTipIcon.Info);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError("Startup setting failed", ex);
+        }
+        finally
+        {
+            SetStartupMenuBusy(false);
+        }
+    }
+
+    private async Task RefreshStartupMenuAsync()
+    {
+        SetStartupMenuBusy(true);
+        try
+        {
+            startupMenuItem.Checked = await StartupTaskService.IsInstalledAsync();
+        }
+        catch
+        {
+            startupMenuItem.Checked = false;
+        }
+        finally
+        {
+            SetStartupMenuBusy(false);
+        }
+    }
+
+    private void SetStartupMenuBusy(bool busy)
+    {
+        startupMenuItem.Enabled = !busy && !isBusy;
     }
 
     private void ShowError(string title, Exception ex)
@@ -341,6 +400,64 @@ internal static class BcdeditService
 }
 
 internal sealed record CommandResult(string Output, string Error);
+
+internal static class StartupTaskService
+{
+    private const string TaskName = "eGPU Tray Toggle";
+
+    public static async Task<bool> IsInstalledAsync()
+    {
+        var result = await RunSchtasksAsync($"/Query /TN \"{TaskName}\"", throwOnFailure: false);
+        return result.ExitCode == 0;
+    }
+
+    public static async Task InstallAsync()
+    {
+        var exePath = Environment.ProcessPath
+            ?? throw new InvalidOperationException("Unable to resolve the current executable path.");
+        var taskRun = $"\"{exePath}\" --no-toggle";
+        var arguments = $"/Create /TN \"{TaskName}\" /TR \"{taskRun}\" /SC ONLOGON /RL HIGHEST /F";
+        _ = await RunSchtasksAsync(arguments, throwOnFailure: true);
+    }
+
+    public static async Task UninstallAsync()
+    {
+        _ = await RunSchtasksAsync($"/Delete /TN \"{TaskName}\" /F", throwOnFailure: true);
+    }
+
+    private static async Task<SchtasksResult> RunSchtasksAsync(string arguments, bool throwOnFailure)
+    {
+        var fileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "schtasks.exe");
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Failed to start schtasks.exe.");
+
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        var output = (await outputTask).Trim();
+        var error = (await errorTask).Trim();
+        if (throwOnFailure && process.ExitCode != 0)
+        {
+            var message = string.IsNullOrWhiteSpace(error) ? output : error;
+            throw new InvalidOperationException(message);
+        }
+
+        return new SchtasksResult(process.ExitCode, output, error);
+    }
+}
+
+internal sealed record SchtasksResult(int ExitCode, string Output, string Error);
 
 internal static class IconFactory
 {
