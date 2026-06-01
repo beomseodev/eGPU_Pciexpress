@@ -8,6 +8,30 @@ Windows 부팅 설정의 `pciexpress` 값을 버튼으로 전환하기 위한 �
 새 GUI version은 C# Windows Forms 기반의 트레이 앱입니다.
 PowerShell 창이나 콘솔 창 없이 실행되며, 관리자 권한 UAC 승인 후 현재 상태를 자동으로 반대로 전환합니다.
 
+### 실행 방법
+
+이미 빌드된 실행 파일이 있는 경우 아래 파일을 더블클릭합니다.
+
+```text
+dist\eGPU-TrayToggle\EGPU.TrayToggle.exe
+```
+
+배포용 zip을 받은 경우:
+
+1. `eGPU-TrayToggle-win-x64.zip` 압축을 풉니다.
+2. 압축을 푼 폴더의 `EGPU.TrayToggle.exe`를 더블클릭합니다.
+3. Windows UAC 창이 표시되면 관리자 권한 실행을 허용합니다.
+4. 앱이 현재 `pciexpress` 상태를 읽고 자동으로 반대 상태로 전환합니다.
+5. 전환 후 시스템 트레이 아이콘에서 현재 ON/OFF 상태를 확인합니다.
+
+저장소에서 실행하는 경우 아래 런처를 사용할 수도 있습니다.
+
+```powershell
+.\Run-eGPU-TrayToggle.cmd
+```
+
+주의: `EGPU.TrayToggle.exe`는 실행 즉시 ON/OFF를 토글합니다. 단순히 열어보는 것만으로도 `bcdedit` 설정이 바뀔 수 있습니다.
+
 ### 동작 방식
 
 - 현재 상태가 ON이면 실행 시 OFF로 복원합니다.
@@ -25,7 +49,7 @@ PowerShell 창이나 콘솔 창 없이 실행되며, 관리자 권한 UAC 승인
 빌드하려면 .NET 8 SDK가 필요합니다.
 
 ```powershell
-dotnet build .\EGPU.TrayToggle\EGPU.TrayToggle.csproj -c Release
+dotnet publish .\EGPU.TrayToggle\EGPU.TrayToggle.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o .\dist\eGPU-TrayToggle
 ```
 
 빌드 후 실행:
@@ -37,7 +61,7 @@ dotnet build .\EGPU.TrayToggle\EGPU.TrayToggle.csproj -c Release
 또는 빌드 산출물 실행:
 
 ```powershell
-.\EGPU.TrayToggle\bin\Release\net8.0-windows\EGPU.TrayToggle.exe
+.\dist\eGPU-TrayToggle\EGPU.TrayToggle.exe
 ```
 
 ## PowerShell ver1
