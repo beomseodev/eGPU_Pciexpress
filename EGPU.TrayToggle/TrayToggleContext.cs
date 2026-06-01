@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.IO.Pipes;
-using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace EGPU.TrayToggle;
@@ -206,7 +205,6 @@ internal sealed class TrayToggleContext : ApplicationContext
             toggleMenuItem.Text = "Turn ON";
         }
 
-        ShortcutUpdater.UpdateShortcuts(state);
     }
 
     private void SetErrorState()
@@ -338,127 +336,6 @@ internal static class BcdeditService
 
 internal sealed record CommandResult(string Output, string Error);
 
-internal static class ShortcutUpdater
-{
-    private const string ShortcutName = "eGPU Tray Toggle.lnk";
-
-    public static void UpdateShortcuts(PciexpressState state)
-    {
-        if (state == PciexpressState.Unknown)
-        {
-            return;
-        }
-
-        var executablePath = Environment.ProcessPath;
-        if (string.IsNullOrWhiteSpace(executablePath))
-        {
-            return;
-        }
-
-        var iconPath = EnsureStatusIconFile(state);
-        if (string.IsNullOrWhiteSpace(iconPath))
-        {
-            return;
-        }
-
-        var shellType = Type.GetTypeFromProgID("WScript.Shell");
-        if (shellType is null)
-        {
-            return;
-        }
-
-        object? shell = null;
-        try
-        {
-            shell = Activator.CreateInstance(shellType);
-            if (shell is null)
-            {
-                return;
-            }
-
-            var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            if (!string.IsNullOrWhiteSpace(desktopPath))
-            {
-                CreateOrUpdateShortcut(shellType, shell, Path.Combine(desktopPath, ShortcutName), executablePath, iconPath);
-            }
-
-            CreateOrUpdateShortcut(shellType, shell, Path.Combine(AppContext.BaseDirectory, ShortcutName), executablePath, iconPath);
-        }
-        catch
-        {
-            // Shortcut icon updates are best effort. The tray state remains authoritative.
-        }
-        finally
-        {
-            if (shell is not null && Marshal.IsComObject(shell))
-            {
-                Marshal.FinalReleaseComObject(shell);
-            }
-        }
-    }
-
-    private static void CreateOrUpdateShortcut(Type shellType, object shell, string shortcutPath, string executablePath, string iconPath)
-    {
-        object? shortcut = null;
-        try
-        {
-            shortcut = shellType.InvokeMember(
-                "CreateShortcut",
-                BindingFlags.InvokeMethod,
-                binder: null,
-                target: shell,
-                args: new object[] { shortcutPath });
-
-            if (shortcut is null)
-            {
-                return;
-            }
-
-            var shortcutType = shortcut.GetType();
-            shortcutType.InvokeMember("TargetPath", BindingFlags.SetProperty, null, shortcut, new object[] { executablePath });
-            shortcutType.InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, shortcut, new object[] { AppContext.BaseDirectory });
-            shortcutType.InvokeMember("IconLocation", BindingFlags.SetProperty, null, shortcut, new object[] { iconPath });
-            shortcutType.InvokeMember("Description", BindingFlags.SetProperty, null, shortcut, new object[] { "Toggle eGPU PCI Express mode" });
-            shortcutType.InvokeMember("Save", BindingFlags.InvokeMethod, null, shortcut, Array.Empty<object>());
-        }
-        finally
-        {
-            if (shortcut is not null && Marshal.IsComObject(shortcut))
-            {
-                Marshal.FinalReleaseComObject(shortcut);
-            }
-        }
-    }
-
-    private static string? EnsureStatusIconFile(PciexpressState state)
-    {
-        try
-        {
-            var iconDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "EGPU.TrayToggle",
-                "icons");
-            Directory.CreateDirectory(iconDirectory);
-
-            var iconPath = Path.Combine(iconDirectory, state == PciexpressState.On ? "status-on.ico" : "status-off.ico");
-            var color = state == PciexpressState.On
-                ? Color.FromArgb(0, 190, 90)
-                : Color.FromArgb(220, 35, 35);
-
-            if (!File.Exists(iconPath))
-            {
-                IconFactory.SaveStatusLight(iconPath, color);
-            }
-
-            return iconPath;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-}
-
 internal static class IconFactory
 {
     [DllImport("user32.dll", SetLastError = true)]
@@ -485,13 +362,6 @@ internal static class IconFactory
         }
 
         return CreateIconFromBitmap(bitmap);
-    }
-
-    public static void SaveStatusLight(string path, Color color)
-    {
-        using var icon = CreateStatusLight(color);
-        using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.Read);
-        icon.Save(stream);
     }
 
     public static Icon CreateText(string text, Color background, Color foreground)
