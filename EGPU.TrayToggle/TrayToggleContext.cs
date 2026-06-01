@@ -206,7 +206,7 @@ internal sealed class TrayToggleContext : ApplicationContext
             toggleMenuItem.Text = "Turn ON";
         }
 
-        ShortcutUpdater.UpdateDesktopShortcut(state);
+        ShortcutUpdater.UpdateShortcuts(state);
     }
 
     private void SetErrorState()
@@ -342,7 +342,7 @@ internal static class ShortcutUpdater
 {
     private const string ShortcutName = "eGPU Tray Toggle.lnk";
 
-    public static void UpdateDesktopShortcut(PciexpressState state)
+    public static void UpdateShortcuts(PciexpressState state)
     {
         if (state == PciexpressState.Unknown)
         {
@@ -355,15 +355,8 @@ internal static class ShortcutUpdater
             return;
         }
 
-        var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        if (string.IsNullOrWhiteSpace(desktopPath))
-        {
-            return;
-        }
-
-        var iconFileName = state == PciexpressState.On ? "status-on.ico" : "status-off.ico";
-        var iconPath = Path.Combine(AppContext.BaseDirectory, iconFileName);
-        if (!File.Exists(iconPath))
+        var iconPath = EnsureStatusIconFile(state);
+        if (string.IsNullOrWhiteSpace(iconPath))
         {
             return;
         }
@@ -375,7 +368,6 @@ internal static class ShortcutUpdater
         }
 
         object? shell = null;
-        object? shortcut = null;
         try
         {
             shell = Activator.CreateInstance(shellType);
@@ -384,7 +376,32 @@ internal static class ShortcutUpdater
                 return;
             }
 
-            var shortcutPath = Path.Combine(desktopPath, ShortcutName);
+            var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            if (!string.IsNullOrWhiteSpace(desktopPath))
+            {
+                CreateOrUpdateShortcut(shellType, shell, Path.Combine(desktopPath, ShortcutName), executablePath, iconPath);
+            }
+
+            CreateOrUpdateShortcut(shellType, shell, Path.Combine(AppContext.BaseDirectory, ShortcutName), executablePath, iconPath);
+        }
+        catch
+        {
+            // Shortcut icon updates are best effort. The tray state remains authoritative.
+        }
+        finally
+        {
+            if (shell is not null && Marshal.IsComObject(shell))
+            {
+                Marshal.FinalReleaseComObject(shell);
+            }
+        }
+    }
+
+    private static void CreateOrUpdateShortcut(Type shellType, object shell, string shortcutPath, string executablePath, string iconPath)
+    {
+        object? shortcut = null;
+        try
+        {
             shortcut = shellType.InvokeMember(
                 "CreateShortcut",
                 BindingFlags.InvokeMethod,
@@ -404,21 +421,40 @@ internal static class ShortcutUpdater
             shortcutType.InvokeMember("Description", BindingFlags.SetProperty, null, shortcut, new object[] { "Toggle eGPU PCI Express mode" });
             shortcutType.InvokeMember("Save", BindingFlags.InvokeMethod, null, shortcut, Array.Empty<object>());
         }
-        catch
-        {
-            // Shortcut icon updates are best effort. The tray state remains authoritative.
-        }
         finally
         {
             if (shortcut is not null && Marshal.IsComObject(shortcut))
             {
                 Marshal.FinalReleaseComObject(shortcut);
             }
+        }
+    }
 
-            if (shell is not null && Marshal.IsComObject(shell))
+    private static string? EnsureStatusIconFile(PciexpressState state)
+    {
+        try
+        {
+            var iconDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "EGPU.TrayToggle",
+                "icons");
+            Directory.CreateDirectory(iconDirectory);
+
+            var iconPath = Path.Combine(iconDirectory, state == PciexpressState.On ? "status-on.ico" : "status-off.ico");
+            var color = state == PciexpressState.On
+                ? Color.FromArgb(0, 190, 90)
+                : Color.FromArgb(220, 35, 35);
+
+            if (!File.Exists(iconPath))
             {
-                Marshal.FinalReleaseComObject(shell);
+                IconFactory.SaveStatusLight(iconPath, color);
             }
+
+            return iconPath;
+        }
+        catch
+        {
+            return null;
         }
     }
 }
@@ -449,6 +485,13 @@ internal static class IconFactory
         }
 
         return CreateIconFromBitmap(bitmap);
+    }
+
+    public static void SaveStatusLight(string path, Color color)
+    {
+        using var icon = CreateStatusLight(color);
+        using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.Read);
+        icon.Save(stream);
     }
 
     public static Icon CreateText(string text, Color background, Color foreground)

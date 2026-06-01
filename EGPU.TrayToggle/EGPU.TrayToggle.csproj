@@ -9,11 +9,4 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <RootNamespace>EGPU.TrayToggle</RootNamespace>
   </PropertyGroup>
-  <ItemGroup>
-    <None Update="status-on.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    <None Update="status-off.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-  </ItemGroup>
-  <Target Name="CopyStatusIconsToPublishDirectory" AfterTargets="Publish">
-    <Copy SourceFiles="$(MSBuildProjectDirectory)\status-on.ico;$(MSBuildProjectDirectory)\status-off.ico" DestinationFolder="$(PublishDir)" />
-  </Target>
 </Project>

@@ -23,7 +23,7 @@ dist\eGPU-TrayToggle-shortcut\EGPU.TrayToggle.exe
 3. Windows UAC 창이 표시되면 관리자 권한 실행을 허용합니다.
 4. 앱이 현재 `pciexpress` 상태를 읽고 자동으로 반대 상태로 전환합니다.
 5. 전환 후 시스템 트레이 아이콘에서 현재 ON/OFF 상태를 확인합니다.
-6. 앱은 바탕화면에 `eGPU Tray Toggle` 바로가기를 만들거나 갱신하며, 이 바로가기 아이콘도 현재 상태에 맞춰 바뀝니다.
+6. 앱은 실행 파일 폴더와 바탕화면에 `eGPU Tray Toggle` 바로가기를 만들거나 갱신하며, 이 바로가기 아이콘도 현재 상태에 맞춰 바뀝니다.
 
 저장소에서 실행하는 경우 아래 런처를 사용할 수도 있습니다.
 
@@ -40,8 +40,8 @@ dist\eGPU-TrayToggle-shortcut\EGPU.TrayToggle.exe
 - 실행 후 시스템 트레이에 상주하며 아이콘으로 상태를 표시합니다.
 - 초록불 아이콘: `pciexpress ForceDisable`
 - 빨간불 아이콘: 기본 PCI Express 설정
-- 바탕화면의 `eGPU Tray Toggle` 바로가기는 현재 상태에 맞춰 초록불 또는 빨간불 아이콘으로 갱신됩니다.
-- `EGPU.TrayToggle.exe` 파일 자체 아이콘은 Windows 특성상 정적인 앱 식별 아이콘이며, 현재 ON/OFF 상태 표시는 트레이 아이콘과 바탕화면 바로가기를 기준으로 확인합니다.
+- 실행 파일 폴더와 바탕화면의 `eGPU Tray Toggle` 바로가기는 현재 상태에 맞춰 초록불 또는 빨간불 아이콘으로 갱신됩니다.
+- `EGPU.TrayToggle.exe` 파일 자체 아이콘은 Windows 특성상 정적인 앱 식별 아이콘이며, 현재 ON/OFF 상태 표시는 트레이 아이콘과 `eGPU Tray Toggle` 바로가기를 기준으로 확인합니다.
 - 트레이 아이콘 더블클릭 또는 메뉴의 `Toggle`로 다시 전환할 수 있습니다.
 - 트레이 메뉴는 `Toggle`, `Refresh`, `Exit`을 제공합니다.
 - 이미 실행 중인 상태에서 다시 실행하면 새 앱을 띄우지 않고 기존 트레이 앱에 토글 명령을 보냅니다.
