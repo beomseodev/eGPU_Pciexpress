@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.IO.Pipes;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace EGPU.TrayToggle;
@@ -204,6 +205,8 @@ internal sealed class TrayToggleContext : ApplicationContext
             notifyIcon.Text = "eGPU stabilization OFF";
             toggleMenuItem.Text = "Turn ON";
         }
+
+        ShortcutUpdater.UpdateDesktopShortcut(state);
     }
 
     private void SetErrorState()
@@ -243,7 +246,7 @@ internal sealed class TrayToggleContext : ApplicationContext
 
         if (messageWindow.InvokeRequired)
         {
-            messageWindow.BeginInvoke((MethodInvoker)(async () => await action()));
+            messageWindow.BeginInvoke((System.Windows.Forms.MethodInvoker)(async () => await action()));
             return;
         }
 
@@ -334,6 +337,91 @@ internal static class BcdeditService
 }
 
 internal sealed record CommandResult(string Output, string Error);
+
+internal static class ShortcutUpdater
+{
+    private const string ShortcutName = "eGPU Tray Toggle.lnk";
+
+    public static void UpdateDesktopShortcut(PciexpressState state)
+    {
+        if (state == PciexpressState.Unknown)
+        {
+            return;
+        }
+
+        var executablePath = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            return;
+        }
+
+        var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        if (string.IsNullOrWhiteSpace(desktopPath))
+        {
+            return;
+        }
+
+        var iconFileName = state == PciexpressState.On ? "status-on.ico" : "status-off.ico";
+        var iconPath = Path.Combine(AppContext.BaseDirectory, iconFileName);
+        if (!File.Exists(iconPath))
+        {
+            return;
+        }
+
+        var shellType = Type.GetTypeFromProgID("WScript.Shell");
+        if (shellType is null)
+        {
+            return;
+        }
+
+        object? shell = null;
+        object? shortcut = null;
+        try
+        {
+            shell = Activator.CreateInstance(shellType);
+            if (shell is null)
+            {
+                return;
+            }
+
+            var shortcutPath = Path.Combine(desktopPath, ShortcutName);
+            shortcut = shellType.InvokeMember(
+                "CreateShortcut",
+                BindingFlags.InvokeMethod,
+                binder: null,
+                target: shell,
+                args: new object[] { shortcutPath });
+
+            if (shortcut is null)
+            {
+                return;
+            }
+
+            var shortcutType = shortcut.GetType();
+            shortcutType.InvokeMember("TargetPath", BindingFlags.SetProperty, null, shortcut, new object[] { executablePath });
+            shortcutType.InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, shortcut, new object[] { AppContext.BaseDirectory });
+            shortcutType.InvokeMember("IconLocation", BindingFlags.SetProperty, null, shortcut, new object[] { iconPath });
+            shortcutType.InvokeMember("Description", BindingFlags.SetProperty, null, shortcut, new object[] { "Toggle eGPU PCI Express mode" });
+            shortcutType.InvokeMember("Save", BindingFlags.InvokeMethod, null, shortcut, Array.Empty<object>());
+        }
+        catch
+        {
+            // Shortcut icon updates are best effort. The tray state remains authoritative.
+        }
+        finally
+        {
+            if (shortcut is not null && Marshal.IsComObject(shortcut))
+            {
+                Marshal.FinalReleaseComObject(shortcut);
+            }
+
+            if (shell is not null && Marshal.IsComObject(shell))
+            {
+                Marshal.FinalReleaseComObject(shell);
+            }
+        }
+    }
+}
 
 internal static class IconFactory
 {
