@@ -3,6 +3,52 @@
 eGPU 연결 시 `WHEA-Logger` 오류와 시스템 다운이 반복되는 환경에서,
 Windows 부팅 설정의 `pciexpress` 값을 버튼으로 전환하기 위한 간단한 도구입니다.
 
+## GUI version
+
+새 GUI version은 C# Windows Forms 기반의 트레이 앱입니다.
+PowerShell 창이나 콘솔 창 없이 실행되며, 관리자 권한 UAC 승인 후 현재 상태를 자동으로 반대로 전환합니다.
+
+### 동작 방식
+
+- 현재 상태가 ON이면 실행 시 OFF로 복원합니다.
+- 현재 상태가 OFF이면 실행 시 ON으로 적용합니다.
+- 실행 후 시스템 트레이에 상주하며 아이콘으로 상태를 표시합니다.
+- 초록색 `ON` 아이콘: `pciexpress ForceDisable`
+- 회색 `OFF` 아이콘: 기본 PCI Express 설정
+- 트레이 아이콘 더블클릭 또는 메뉴의 `Toggle`로 다시 전환할 수 있습니다.
+- 트레이 메뉴는 `Toggle`, `Refresh`, `Exit`을 제공합니다.
+- 이미 실행 중인 상태에서 다시 실행하면 새 앱을 띄우지 않고 기존 트레이 앱에 토글 명령을 보냅니다.
+
+### 빌드
+
+현재 저장소에는 소스 코드만 포함되어 있습니다.
+빌드하려면 .NET 8 SDK가 필요합니다.
+
+```powershell
+dotnet build .\EGPU.TrayToggle\EGPU.TrayToggle.csproj -c Release
+```
+
+빌드 후 실행:
+
+```powershell
+.\Run-eGPU-TrayToggle.cmd
+```
+
+또는 빌드 산출물 실행:
+
+```powershell
+.\EGPU.TrayToggle\bin\Release\net8.0-windows\EGPU.TrayToggle.exe
+```
+
+## PowerShell ver1
+
+초기 버전은 PowerShell WinForms 앱입니다.
+추가 SDK 없이 실행해야 하는 경우 아래 파일을 사용할 수 있습니다.
+
+```powershell
+.\Run-eGPU-Manager.cmd
+```
+
 ## 기능
 
 - ON: `bcdedit /set pciexpress ForceDisable`
@@ -28,6 +74,7 @@ Windows 부팅 설정의 `pciexpress` 값을 버튼으로 전환하기 위한 �
 
 ## 개발 메모
 
-추가 SDK 설치 없이 실행할 수 있도록 PowerShell WinForms로 작성했습니다.
+GUI version은 C# Windows Forms로 작성했습니다.
+PowerShell ver1은 추가 SDK 설치 없이 실행할 수 있도록 PowerShell WinForms로 유지합니다.
 커밋 시에는 커밋 컨벤션을 따릅니다. 예: `feat: add eGPU PCI Express toggle app`
 
