@@ -24,9 +24,9 @@ internal sealed class TrayToggleContext : ApplicationContext
     public TrayToggleContext(string pipeName)
     {
         this.pipeName = pipeName;
-        onIcon = IconFactory.Create("ON", Color.FromArgb(0, 150, 72), Color.White);
-        offIcon = IconFactory.Create("OFF", Color.FromArgb(85, 85, 85), Color.White);
-        errorIcon = IconFactory.Create("!", Color.FromArgb(190, 35, 35), Color.White);
+        onIcon = IconFactory.CreateStatusLight(Color.FromArgb(0, 190, 90));
+        offIcon = IconFactory.CreateStatusLight(Color.FromArgb(220, 35, 35));
+        errorIcon = IconFactory.CreateText("!", Color.FromArgb(190, 35, 35), Color.White);
         messageWindow = new Form
         {
             ShowInTaskbar = false,
@@ -340,7 +340,30 @@ internal static class IconFactory
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool DestroyIcon(IntPtr hIcon);
 
-    public static Icon Create(string text, Color background, Color foreground)
+    public static Icon CreateStatusLight(Color color)
+    {
+        using var bitmap = new Bitmap(32, 32);
+        using (var graphics = Graphics.FromImage(bitmap))
+        {
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            graphics.Clear(Color.Transparent);
+            using var shadowBrush = new SolidBrush(Color.FromArgb(80, 0, 0, 0));
+            graphics.FillEllipse(shadowBrush, 4, 5, 25, 25);
+
+            using var ringBrush = new SolidBrush(Color.FromArgb(40, 40, 40));
+            graphics.FillEllipse(ringBrush, 2, 2, 28, 28);
+
+            using var lightBrush = new SolidBrush(color);
+            graphics.FillEllipse(lightBrush, 5, 5, 22, 22);
+
+            using var highlightBrush = new SolidBrush(Color.FromArgb(150, 255, 255, 255));
+            graphics.FillEllipse(highlightBrush, 9, 8, 7, 7);
+        }
+
+        return CreateIconFromBitmap(bitmap);
+    }
+
+    public static Icon CreateText(string text, Color background, Color foreground)
     {
         using var bitmap = new Bitmap(32, 32);
         using (var graphics = Graphics.FromImage(bitmap))
@@ -358,6 +381,11 @@ internal static class IconFactory
             graphics.DrawString(text, font, textBrush, x, y);
         }
 
+        return CreateIconFromBitmap(bitmap);
+    }
+
+    private static Icon CreateIconFromBitmap(Bitmap bitmap)
+    {
         var handle = bitmap.GetHicon();
         try
         {

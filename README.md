@@ -13,12 +13,12 @@ PowerShell 창이나 콘솔 창 없이 실행되며, 관리자 권한 UAC 승인
 이미 빌드된 실행 파일이 있는 경우 아래 파일을 더블클릭합니다.
 
 ```text
-dist\eGPU-TrayToggle\EGPU.TrayToggle.exe
+dist\eGPU-TrayToggle-signal\EGPU.TrayToggle.exe
 ```
 
 배포용 zip을 받은 경우:
 
-1. `eGPU-TrayToggle-win-x64.zip` 압축을 풉니다.
+1. `eGPU-TrayToggle-signal-win-x64.zip` 압축을 풉니다.
 2. 압축을 푼 폴더의 `EGPU.TrayToggle.exe`를 더블클릭합니다.
 3. Windows UAC 창이 표시되면 관리자 권한 실행을 허용합니다.
 4. 앱이 현재 `pciexpress` 상태를 읽고 자동으로 반대 상태로 전환합니다.
@@ -37,8 +37,8 @@ dist\eGPU-TrayToggle\EGPU.TrayToggle.exe
 - 현재 상태가 ON이면 실행 시 OFF로 복원합니다.
 - 현재 상태가 OFF이면 실행 시 ON으로 적용합니다.
 - 실행 후 시스템 트레이에 상주하며 아이콘으로 상태를 표시합니다.
-- 초록색 `ON` 아이콘: `pciexpress ForceDisable`
-- 회색 `OFF` 아이콘: 기본 PCI Express 설정
+- 초록불 아이콘: `pciexpress ForceDisable`
+- 빨간불 아이콘: 기본 PCI Express 설정
 - 트레이 아이콘 더블클릭 또는 메뉴의 `Toggle`로 다시 전환할 수 있습니다.
 - 트레이 메뉴는 `Toggle`, `Refresh`, `Exit`을 제공합니다.
 - 이미 실행 중인 상태에서 다시 실행하면 새 앱을 띄우지 않고 기존 트레이 앱에 토글 명령을 보냅니다.
@@ -49,7 +49,7 @@ dist\eGPU-TrayToggle\EGPU.TrayToggle.exe
 빌드하려면 .NET 8 SDK가 필요합니다.
 
 ```powershell
-dotnet publish .\EGPU.TrayToggle\EGPU.TrayToggle.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o .\dist\eGPU-TrayToggle
+dotnet publish .\EGPU.TrayToggle\EGPU.TrayToggle.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o .\dist\eGPU-TrayToggle-signal
 ```
 
 빌드 후 실행:
@@ -61,7 +61,7 @@ dotnet publish .\EGPU.TrayToggle\EGPU.TrayToggle.csproj -c Release -r win-x64 --
 또는 빌드 산출물 실행:
 
 ```powershell
-.\dist\eGPU-TrayToggle\EGPU.TrayToggle.exe
+.\dist\eGPU-TrayToggle-signal\EGPU.TrayToggle.exe
 ```
 
 ## PowerShell ver1
