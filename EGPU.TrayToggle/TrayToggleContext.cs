@@ -21,7 +21,7 @@ internal sealed class TrayToggleContext : ApplicationContext
     private bool pendingToggle;
     private PciexpressState currentState = PciexpressState.Unknown;
 
-    public TrayToggleContext(string pipeName)
+    public TrayToggleContext(string pipeName, bool toggleOnStart)
     {
         this.pipeName = pipeName;
         onIcon = IconFactory.CreateStatusLight(Color.FromArgb(0, 190, 90));
@@ -55,7 +55,9 @@ internal sealed class TrayToggleContext : ApplicationContext
         notifyIcon.DoubleClick += async (_, _) => await ToggleAsync(showBalloon: true);
 
         _ = RunPipeServerAsync(pipeCancellation.Token);
-        _ = ToggleAsync(showBalloon: true);
+        _ = toggleOnStart
+            ? ToggleAsync(showBalloon: true)
+            : RefreshAsync(showBalloon: false);
     }
 
     protected override void Dispose(bool disposing)
@@ -98,6 +100,10 @@ internal sealed class TrayToggleContext : ApplicationContext
                         notifyIcon.ShowBalloonTip(1000, "eGPU PCI Express", "Toggling state.", ToolTipIcon.Info);
                         await ToggleAsync(showBalloon: true);
                     });
+                }
+                else if (string.Equals(command, "refresh", StringComparison.OrdinalIgnoreCase))
+                {
+                    RunOnUiThread(async () => await RefreshAsync(showBalloon: false));
                 }
             }
             catch (OperationCanceledException)
